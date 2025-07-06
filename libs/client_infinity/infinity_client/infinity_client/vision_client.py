@@ -7,7 +7,10 @@ from typing import Union, Literal
 
 HAS_IMPORTS = True
 try:
-    from PIL import Image
+    from PIL import Image, ImageFile
+
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
+
     import numpy as np
 
 except ImportError:
@@ -77,7 +80,9 @@ class InfinityVisionAPI:
         req.raise_for_status()
         return req.status_code == 200
 
-    def _request(self, model: str, images_or_text: list[Union["Image.Image", str]]) -> dict:
+    def _request(
+        self, model: str, images_or_text: list[Union["Image.Image", str]]
+    ) -> dict:
         if all(hasattr(item, "save") for item in images_or_text):
             payload = self._image_payload(images_or_text)
             modality = "image"
@@ -89,14 +94,21 @@ class InfinityVisionAPI:
 
         embeddings_req = self.session.post(
             f"{self.url}/embeddings",
-            json={"model": model, "input": payload, "encoding_format": self.format, "modality": modality},
+            json={
+                "model": model,
+                "input": payload,
+                "encoding_format": self.format,
+                "modality": modality,
+            },
         )
         embeddings_req.raise_for_status()
         embeddings = embeddings_req.json()
 
         if self.format == "base64":
             embeddings_decoded = [
-                np.frombuffer(base64.b64decode(e["embedding"]), dtype=np.float32).reshape(-1, self.hidden_dim)
+                np.frombuffer(
+                    base64.b64decode(e["embedding"]), dtype=np.float32
+                ).reshape(-1, self.hidden_dim)
                 for e in embeddings["data"]
             ]
         else:

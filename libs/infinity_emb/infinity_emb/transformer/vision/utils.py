@@ -16,7 +16,9 @@ if CHECK_AIOHTTP.is_available:
     import aiohttp
 
 if CHECK_PIL.is_available:
-    from PIL import Image  # type: ignore
+    from PIL import Image, ImageFile  # type: ignore
+
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 def resolve_from_img_obj(img_obj: "ImageClassType") -> ImageSingle:
@@ -24,13 +26,17 @@ def resolve_from_img_obj(img_obj: "ImageClassType") -> ImageSingle:
     return ImageSingle(image=img_obj)
 
 
-async def resolve_from_img_url(img_url: str, session: "aiohttp.ClientSession") -> ImageSingle:
+async def resolve_from_img_url(
+    img_url: str, session: "aiohttp.ClientSession"
+) -> ImageSingle:
     """Resolve an image from an URL."""
     try:
         # requests.get(img_url, stream=True).raw
         downloaded_img = await (await session.get(img_url)).read()
     except Exception as e:
-        raise ImageCorruption(f"error opening an image in your request image from url: {e}")
+        raise ImageCorruption(
+            f"error opening an image in your request image from url: {e}"
+        )
 
     try:
         img = Image.open(io.BytesIO(downloaded_img))
@@ -66,7 +72,9 @@ async def resolve_image(
     elif isinstance(img, str):
         return await resolve_from_img_url(img, session=session)
     else:
-        raise ValueError(f"Invalid image type: {img} is neither str nor ImageClassType object")
+        raise ValueError(
+            f"Invalid image type: {img} is neither str nor ImageClassType object"
+        )
 
 
 async def resolve_images(
@@ -79,6 +87,8 @@ async def resolve_images(
 
     resolved_imgs = []
     async with aiohttp.ClientSession(trust_env=True) as session:
-        resolved_imgs = await asyncio.gather(*[resolve_image(img, session) for img in images])
+        resolved_imgs = await asyncio.gather(
+            *[resolve_image(img, session) for img in images]
+        )
 
     return resolved_imgs
