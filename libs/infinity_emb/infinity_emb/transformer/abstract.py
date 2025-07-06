@@ -35,7 +35,9 @@ if TYPE_CHECKING:
     from infinity_emb.args import EngineArgs
 
 if CHECK_PIL.is_available:
-    from PIL import Image
+    from PIL import Image, ImageFile
+
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 # if CHECK_SOUNDFILE:
 #     import soundfile as sf
@@ -81,7 +83,9 @@ class BaseEmbedder(BaseTransformer):  # Inherit from ABC(Abstract base class)
         """takes care of the tokenization and feature preparation"""
 
     @abstractmethod
-    def encode_post(self, embedding: OUT_FEATURES, skip_quanitzation=True) -> EmbeddingReturnType:
+    def encode_post(
+        self, embedding: OUT_FEATURES, skip_quanitzation=True
+    ) -> EmbeddingReturnType:
         """runs post encoding such as normalization"""
 
     def warmup(self, *, batch_size: int = 64, n_tokens=1) -> tuple[float, float, str]:
@@ -102,14 +106,18 @@ class BaseTIMM(BaseEmbedder):  # Inherit from ABC(Abstract base class)
         return self.engine_args.embedding_dtype
 
     @abstractmethod  # Decorator to define an abstract method
-    def encode_pre(self, sentences_or_images: list[Union[str, "ImageClass"]]) -> INPUT_FEATURE:
+    def encode_pre(
+        self, sentences_or_images: list[Union[str, "ImageClass"]]
+    ) -> INPUT_FEATURE:
         """
         takes a list of sentences, or a list of images.
         Images could be url or numpy arrays/pil
         """
 
     @abstractmethod
-    def encode_post(self, embedding: OUT_FEATURES, skip_quanitzation=True) -> EmbeddingReturnType:
+    def encode_post(
+        self, embedding: OUT_FEATURES, skip_quanitzation=True
+    ) -> EmbeddingReturnType:
         """runs post encoding such as normalization"""
 
     def warmup(self, *, batch_size: int = 64, n_tokens=1) -> tuple[float, float, str]:
@@ -144,33 +152,34 @@ class BaseAudioEmbedModel(BaseEmbedder):  # Inherit from ABC(Abstract base class
         raise NotImplementedError
 
     @abstractmethod  # Decorator to define an abstract method
-    def encode_pre(self, sentences_or_audios: list[Union[str, AudioInputType]]) -> INPUT_FEATURE:
+    def encode_pre(
+        self, sentences_or_audios: list[Union[str, AudioInputType]]
+    ) -> INPUT_FEATURE:
         """
         takes a list of sentences, or a list of audios.
         Audios could be raw byte array of the wave file
         """
 
     @abstractmethod
-    def encode_post(self, embedding: OUT_FEATURES, skip_quanitzation=True) -> EmbeddingReturnType:
+    def encode_post(
+        self, embedding: OUT_FEATURES, skip_quanitzation=True
+    ) -> EmbeddingReturnType:
         """runs post encoding such as normalization"""
 
     def warmup(self, *, batch_size: int = 64, n_tokens=1) -> tuple[float, float, str]:
         sample_text = ["warm " * n_tokens] * max(1, batch_size // 2)
         # sample_audios = [sf.SoundFile()] * max(1, batch_size // 2)  # type: ignore
-        inp: list[Union[AudioInner, EmbeddingInner]] = (
-            [
-                # TODO: warmup for audio
-                # AudioInner(content=AudioSingle(audio=audio), future=None)  # type: ignore
-                # for audio in sample_audios
-            ]
-            + [
-                EmbeddingInner(
-                    content=EmbeddingSingle(sentence=s),
-                    future=None,  # type: ignore
-                )
-                for s in sample_text
-            ]
-        )
+        inp: list[Union[AudioInner, EmbeddingInner]] = [
+            # TODO: warmup for audio
+            # AudioInner(content=AudioSingle(audio=audio), future=None)  # type: ignore
+            # for audio in sample_audios
+        ] + [
+            EmbeddingInner(
+                content=EmbeddingSingle(sentence=s),
+                future=None,  # type: ignore
+            )
+            for s in sample_text
+        ]
         random.shuffle(inp)
 
         return run_warmup(self, inp)
@@ -221,7 +230,12 @@ class BaseCrossEncoder(BaseTransformer):  # Inherit from ABC(Abstract base class
 
 
 BaseTypeHint = Union[
-    BaseTransformer, BaseEmbedder, BaseTIMM, BaseAudioEmbedModel, BaseClassifer, BaseCrossEncoder
+    BaseTransformer,
+    BaseEmbedder,
+    BaseTIMM,
+    BaseAudioEmbedModel,
+    BaseClassifer,
+    BaseCrossEncoder,
 ]
 
 

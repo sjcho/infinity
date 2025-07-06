@@ -29,7 +29,9 @@ if CHECK_TORCH.is_available:
 if CHECK_TRANSFORMERS.is_available:
     from transformers import AutoConfig, AutoModel, AutoProcessor  # type: ignore
 if CHECK_PIL.is_available:
-    from PIL import Image
+    from PIL import Image, ImageFile
+
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 class TIMM(BaseTIMM):
@@ -119,8 +121,12 @@ class TIMM(BaseTIMM):
             if self.is_colipali:
                 self.model = torch.compile(self.model, dynamic=True)
             else:
-                self.model.vision_model = torch.compile(self.model.vision_model, dynamic=True)
-                self.model.text_model = torch.compile(self.model.text_model, dynamic=True)
+                self.model.vision_model = torch.compile(
+                    self.model.vision_model, dynamic=True
+                )
+                self.model.text_model = torch.compile(
+                    self.model.text_model, dynamic=True
+                )
 
         self.max_length = None
         if hasattr(self.model.config, "max_length"):
@@ -173,7 +179,9 @@ class TIMM(BaseTIMM):
 
         return (preprocessed, type_is_img)
 
-    def _normalize_cpu(self, tensor: Optional["Tensor"], normalize: bool) -> Iterable["Tensor"]:
+    def _normalize_cpu(
+        self, tensor: Optional["Tensor"], normalize: bool
+    ) -> Iterable["Tensor"]:
         if tensor is None:
             return iter([])
         tensor = tensor.to(torch.float32)
@@ -221,7 +229,9 @@ class TIMM(BaseTIMM):
         text_embeds = self._normalize_cpu(text_embeds, normalize=not self.is_colipali)
         image_embeds = self._normalize_cpu(image_embeds, normalize=not self.is_colipali)
 
-        embeddings = list(next(image_embeds if is_img else text_embeds) for is_img in type_is_img)
+        embeddings = list(
+            next(image_embeds if is_img else text_embeds) for is_img in type_is_img
+        )
         return embeddings
 
     def tokenize_lengths(self, text_list: list[str]) -> list[int]:
